@@ -1,6 +1,6 @@
-
-import tweepy
-import openai
+# Script to tweet via GPT3
+import tweepy #used version tweepy==4.10.1
+import openai #used version openai==0.19.0
 
 #Consider moving these keys to .env file and reading in with os.getenv
 consumer_key = 'REPLACE_THIS_WITH_YOUR_CONSUMER_KEY'
