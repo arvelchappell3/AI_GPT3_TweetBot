@@ -1,0 +1,70 @@
+import tweepy
+import os
+import openai
+import random
+
+def lambda_handler(event, context):
+# TODO implement
+#Consider moving these keys to env file and reading in like in the openai code
+consumer_key = 'ADD YOUR CREDENTIALS'
+consumer_secret = 'ADD YOUR CREDENTIALS'
+access_token = 'ADD YOUR CREDENTIALS'
+access_token_secret = 'ADD YOUR CREDENTIALS'
+
+#Set up OpenAi Credentials from env variables
+#openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = 'ADD YOUR CREDENTIALS'
+
+# Set up Twitter OAuth and integrate with API
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(access_token, access_token_secret)
+api = tweepy.API(auth)
+
+#Create GPT3_Tweet prompts
+#Create list with 4 spaces
+G_prompt = ["p0","p1","p2","p3","p4","p5"]
+
+#Overwrite each space with my prompt
+G_prompt[0] = "ADD YOUR PROMPT 00"
+G_prompt[1] = "ADD YOUR PROMPT 01"
+G_prompt[2] = "ADD YOUR PROMPT 02"
+G_prompt[3] = "ADD YOUR PROMPT 03"
+G_prompt[4] = "ADD YOUR PROMPT 04"
+G_prompt[5] = "ADD YOUR PROMPT 05"
+
+#Randomly select Prompt from above choices
+PromptSeed = random.randint(0,5) 
+
+#Send to openAI and use Davici 3.5
+G_Tweet = openai.Completion.create(
+            model="text-davinci-003",
+            prompt=G_prompt[PromptSeed],
+            temperature=0.88,
+            max_tokens = 55,
+        )
+
+#Get the text and check length
+tweet = G_Tweet.choices[0].text
+CharsNtweet = len(tweet)
+
+#Max numbers of characters allowed in a tweet = 280 if greater than 280 generate more in a loop
+#Set counter to stop infinite loop
+
+wCount = 1
+
+while CharsNtweet > 280:
+    #create new tweet
+    G_Tweet = openai.Completion.create(model="text-davinci-003",
+            prompt=G_prompt[PromptSeed],
+            temperature=0.88,
+            max_tokens = 55,
+        )
+    tweet = G_Tweet.choices[0].text
+    CharsNtweet = len(tweet)
+    wCount += 1
+    if wCount == 10:
+        break           # break loop even if while condition is true 
+   
+#If we have a qualifiying tweet then send to twitter
+if CharsNtweet <= 280 and CharsNtweet > 0:
+    api.update_status(status=tweet)
