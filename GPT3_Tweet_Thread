@@ -1,0 +1,105 @@
+import tweepy
+import os
+import openai
+import random
+import math
+
+#Consider moving these keys to env file and reading in like in the openai code
+consumer_key = 'enter consumer key'
+consumer_secret = 'enter consumer secret'
+access_token = 'access token'
+access_token_secret = 'token secret'
+
+#Set up OpenAi Credentials from env variables
+#openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = 'api key'
+
+# Set up Twitter OAuth and integrate with API
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(access_token, access_token_secret)
+api = tweepy.API(auth)
+
+# Create GPT3_Tweet prompts
+#create list with 4 spaces
+G_prompt = ["p0","p1","p2","p3","p4","p5"]
+
+#Overwrite each space with my prompt
+G_prompt[0] = "prompt 1"
+G_prompt[1] = "prompt 2"
+G_prompt[2] = "prompt 3"
+G_prompt[3] = "prompt 4"
+G_prompt[4] = "prompt 5"
+G_prompt[5] = "prompt 6"
+
+PromptSeed = random.randint(0,5)
+
+G_Tweet = openai.Completion.create(
+            model="text-davinci-003",
+            prompt=G_prompt[PromptSeed],
+            temperature=0.88,
+            max_tokens = 75,
+        )
+
+tweet = G_Tweet.choices[0].text
+
+#count characters in tweet from OpenAI
+CharsNtweet = len(tweet)
+
+#How long in characters I want each tweet to be. Set it to 270 to adjust to thread 1/n string
+TrtSPLIT = 270
+
+AmountOfStrCHUNKS = math.ceil(CharsNtweet / TrtSPLIT)
+
+#Set limit to 5 * 280 - 12
+splitStartPOS = [0,0,0,0,0]
+splitStopPOS = [0,0,0,0,0]
+
+for x in range(0, AmountOfStrCHUNKS, 1):             #range(len(splitStartPOS)):
+    strX = str(x)
+
+    if (x > AmountOfStrCHUNKS) or (len(tweet)<281):
+        if AmountOfStrCHUNKS == 1:
+            splitStartPOS[x] = 0
+            splitStopPOS[x] = CharsNtweet
+        break
+    else:
+        #set up search position multiple of 280 * loop/chunk index
+        countDWN = TrtSPLIT * (x + 1)
+
+        #Test for last iteration
+        if countDWN > CharsNtweet:
+            countDWN = CharsNtweet
+            splitStartPOS[x] = splitStopPOS[x - 1] + 1
+            splitStopPOS[x] = countDWN
+            
+        else:
+            #Check breakpoint to see if it's on a character and adjust countDWN until it lands on a space.
+            while tweet[countDWN] != " ":
+                countDWN = countDWN -1
+
+            if x == 0:
+                splitStartPOS[x] = x
+                splitStopPOS[x] = countDWN
+            else:
+                splitStartPOS[x] = splitStopPOS[x - 1] + 1
+                splitStopPOS[x] = countDWN          
+            
+# Now I will slice the string into the parts
+TweetThread = ["","","","",""]
+ThreadCountSTR = ""
+
+#write tweets
+for x in range(0, AmountOfStrCHUNKS, 1):
+        c = x+1
+        if AmountOfStrCHUNKS > 1:
+            ThreadCountSTR = str(c) + "/" + str(AmountOfStrCHUNKS) + " "
+        
+        TweetThread[x] = ThreadCountSTR + tweet[splitStartPOS[x]:splitStopPOS[x]]
+
+        if x == 0:
+            tweetContainer = api.update_status(status=TweetThread[x])
+            
+        else:
+            tweetContainer = api.update_status(status=TweetThread[x],in_reply_to_status_id=tweetContainer.id)
+           
+        
